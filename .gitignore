@@ -1,0 +1,12 @@
+# Any test multimedia we don't want to commit to the world...
+# images
+*.png
+*.jpg
+*.gif
+# video
+*.mov
+*.mp4
+*.avi
+# audio
+*.mp3
+*.amr
