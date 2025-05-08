@@ -11,10 +11,18 @@ In order to make this manageable and displayable to the world there enlists a se
 - create an output file
 - save a json artifact regarding the scanned multimedia, inclusive of original metadata
 
-# scan-image
+## scan-image
 
 This takes in any images supported by PIL, reads exif/gps data and saves a jpeg image at 75% compression (default).
 
-# scan-video
+```
+pip install pillow
+```
+
+## scan-video
 
 This stakes in any video supported by ffmpeg, reads metadata and creates an mp4.
+
+```
+pip install ffmpeg-python
+```

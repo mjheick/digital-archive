@@ -1,3 +1,4 @@
+import ffmpeg
 import hashlib
 import json
 import os.path
@@ -19,10 +20,13 @@ if not os.path.isfile(input_filename):
 
 # Load video
 try:
-    pass
+    vid = ffmpeg.probe(input_filename)
 except:
     print(f"{input_filename} is not a readable video")
     quit()
+
+print(vid)
+quit()
 
 # get sha1 hash of valid video
 f = open(input_filename, "rb")
