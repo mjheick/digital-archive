@@ -9,7 +9,7 @@ from PIL import Image, TiffImagePlugin # pip install pillow
 from PIL.ExifTags import TAGS, GPSTAGS
 
 # Constants
-THUMBNAIL_BASEFOLDER = '/tmp/'
+THUMBNAIL_BASEFOLDER = '/mnt/archive-thumbnails'
 THUMBNAIL_DIMENSIONS = (400, 400)
 FFPROBE_EXEC = '/bin/ffprobe'
 FFMPEG_EXEC = '/bin/ffmpeg'
@@ -70,7 +70,8 @@ def main():
     filesize = os.path.getsize(file)
     filepath = os.path.dirname(file)
     filetype = getMimeType(file)
-    filedate = datetime.datetime.fromtimestamp(os.path.getmtime(file))
+    filedate = str(datetime.datetime.fromtimestamp(os.path.getmtime(file)))
+    filedate = filedate[0:19]
     
     # does this entry exist in the database?
     cursor.execute(
@@ -78,7 +79,7 @@ def main():
       (filename, filepath, filesize, filetype, filedate)
     )
     result = cursor.fetchall()
-    if len(result) == 0:
+    if not result:
       print(f"{filename} does not exist in database ({filesize}, {filetype}, {filedate})")
       hash = fileSha256(file)
       metadata = json.dumps(getMetadata(file), sort_keys=True)
@@ -87,6 +88,7 @@ def main():
         (hash, filename, filepath, filesize, filetype, filedate, metadata)
       )
       db.commit()
+      makeThumbnail(file, hash)
     else:
       print(f"{filename} exists")
       pass
@@ -212,8 +214,52 @@ def get_gps_info(exif_data):
     gps_info["longitude"] = lon
   return gps_info
 
-def makeThumbnail(filename:str):
-  pass
+def makeThumbnail(filename:str, hash:str):
+  # TODO: need default image for unknowns, possibly just symlinking to it so it changes one->all
+  output_filename = os.path.join(THUMBNAIL_BASEFOLDER, hash[0:7] + ".jpg")
+  if os.path.isfile(output_filename):
+    return
+  mime = getMimeType(filename)
+  tn_width = THUMBNAIL_DIMENSIONS[0]
+  tn_height = THUMBNAIL_DIMENSIONS[1]
+  if mime.find("image/") != -1:
+    try:
+      image = Image.open(filename)
+      image_width, image_height = image.size
+      # Do math to resise this down to THUMBNAIL_DIMENSIONS
+      if tn_width < image_width:
+        ratio = image_height / image_width
+        tn_height = int(tn_width * ratio)
+      if tn_height < image_height:
+        ratio = image_width / image_height
+        tn_width = int(tn_height * ratio)
+      # tn_* dimensions are now set
+      tn_image = image.resize((tn_width, tn_height))
+      tn_image.save(output_filename, "JPEG")
+    except (Image.UnidentifiedImageError, OSError):
+      pass
+  elif mime.find("video/") != -1:
+    tmp_filename = os.path.join(THUMBNAIL_BASEFOLDER, hash + ".jpg")
+    subprocess.run([FFMPEG_EXEC, "-ss", "00:00:00", "-i", filename, "-frames:v", "1", tmp_filename], capture_output=True)
+    try:
+      # copy/paste of image resize from above
+      image = Image.open(tmp_filename)
+      image_width, image_height = image.size
+      # Do math to resise this down to THUMBNAIL_DIMENSIONS
+      if tn_width < image_width:
+        ratio = image_height / image_width
+        tn_height = int(tn_width * ratio)
+      if tn_height < image_height:
+        ratio = image_width / image_height
+        tn_width = int(tn_height * ratio)
+      # tn_* dimensions are now set
+      tn_image = image.resize((tn_width, tn_height))
+      tn_image.save(output_filename, "JPEG")
+      os.remove(tmp_filename)
+    except (Image.UnidentifiedImageError, OSError):
+      pass
+  else:
+    pass
+  return
 
 main()
-exit
