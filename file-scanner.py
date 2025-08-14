@@ -8,16 +8,17 @@ import sys
 from PIL import Image, TiffImagePlugin # pip install pillow
 from PIL.ExifTags import TAGS, GPSTAGS
 
-thumbnail_basefolder = '/tmp/'
-thumbnail_dimensions = (400, 400)
-ffprobe_exec = '/bin/ffprobe'
-ffmpeg_exec = '/bin/ffmpeg'
+# Constants
+THUMBNAIL_BASEFOLDER = '/tmp/'
+THUMBNAIL_DIMENSIONS = (400, 400)
+FFPROBE_EXEC = '/bin/ffprobe'
+FFMPEG_EXEC = '/bin/ffmpeg'
 IMAGE_GPSDATA = 34853  # GPSInfo
 IMAGE_EXIFDATA = 34665  # ExifOffset
 
 # Acceptable mime-types for scanner based on file extension
 # https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types/Common_types
-mime_types = {
+MIME_TYPES = {
   'jpeg': 'image/jpeg',
   'jpg': 'image/jpeg',
   'png': 'image/png',
@@ -29,7 +30,7 @@ mime_types = {
   'avi': 'video/x-msvideo',
 }
 
-sql = {
+SQL = {
   'host': 'localhost',
   'username': 'digital_archive',
   'password': 'digital_archive',
@@ -40,30 +41,29 @@ def main():
   if len(sys.argv) != 2:
     print("Need 1 parameter for base file path to use for recursive scanning")
     return 1
-  if not os.path.isfile(ffprobe_exec):
-    print(f"ffprobe not located at {ffprobe_exec}")
+  if not os.path.isfile(FFPROBE_EXEC):
+    print(f"ffprobe not located at {FFPROBE_EXEC}")
     return 1
-  if not os.path.isfile(ffmpeg_exec):
-    print(f"ffmpeg not located at {ffmpeg_exec}")
+  if not os.path.isfile(FFMPEG_EXEC):
+    print(f"ffmpeg not located at {FFMPEG_EXEC}")
     return 1
-  if not os.path.isdir(thumbnail_basefolder):
-    print(f"thumbnail folder at {thumbnail_basefolder} is not reachable")
-    
-
+  if not os.path.isdir(THUMBNAIL_BASEFOLDER):
+    print(f"thumbnail folder at {THUMBNAIL_BASEFOLDER} is not reachable")
+  
   basepath = sys.argv[1]
-    
+  
   if not os.path.isdir(basepath):
     print(f"{basepath} is not a directory")
     return 0
   
   # connect with database
-  db = mysql.connector.connect(host=sql["host"], user=sql["username"], password=sql["password"], database=sql["database"])
+  db = mysql.connector.connect(host=SQL["host"], user=SQL["username"], password=SQL["password"], database=SQL["database"])
   cursor = db.cursor()
   
   # Recursively scan for all directories and files
   all_files = recursiveFolderScan(basepath)
   print(f"Files found: " + str(len(all_files)))
- 
+  
   # Loop through all_files, get filename, filesize, filedate
   for file in all_files:
     filename = os.path.basename(file)
@@ -110,31 +110,33 @@ def recursiveFolderScan(basepath:str):
   return our_files
 
 def acceptableMimeType(filename:str):
-  for extension in mime_types:
+  for extension in MIME_TYPES:
     if filename.lower().endswith("." + extension):
       return True
   return False    
 
 def getMimeType(filename:str):
-  for extension in mime_types:
+  for extension in MIME_TYPES:
     if filename.lower().endswith("." + extension):
-      return mime_types[extension]
+      return MIME_TYPES[extension]
 
 def fileSha256(filename:str):
   sha256_hash = hashlib.sha256()
   with open(filename,"rb") as f:
-    # Read and update hash string value in blocks of 4K
-    for byte_block in iter(lambda: f.read(4096), b""):
+    for byte_block in iter(lambda: f.read(8192), b""):
       sha256_hash.update(byte_block)
   return sha256_hash.hexdigest()
 
 def getMetadata(filename:str):
   metadata = {}
   mime = getMimeType(filename)
-  if mime.find("image/") >= 0:
+  if mime.find("image/") != -1:
     try:
       image = Image.open(filename)
-      exifdata = image.getexif()
+      try:
+        exifdata = image.getexif()
+      except OSError:
+        exifdata = {}
       for key, value in exifdata.items():
         if key == IMAGE_GPSDATA:
           gps_info = exifdata.get_ifd(IMAGE_GPSDATA)
@@ -152,10 +154,10 @@ def getMetadata(filename:str):
           value = jsonable(value)
           tag_name = getExifTagName(key)
           metadata[tag_name] = value
-    except Image.UnidentifiedImageError:
+    except (Image.UnidentifiedImageError, OSError):
       pass
-  if mime.find("video/") >= 0:
-    proc = subprocess.run([ffprobe_exec, "-hide_banner", "-loglevel", "fatal", "-show_error", "-show_format", "-show_streams", "-show_programs", "-show_chapters", "-show_private_data", "-print_format", "json", filename], capture_output=True)
+  if mime.find("video/") != -1:
+    proc = subprocess.run([FFPROBE_EXEC, "-hide_banner", "-loglevel", "fatal", "-show_error", "-show_format", "-show_streams", "-show_programs", "-show_chapters", "-show_private_data", "-print_format", "json", filename], capture_output=True)
     output = proc.stdout
     metadata = json.loads(output)
   return metadata
@@ -187,13 +189,6 @@ def jsonable(i) -> any:
     i = i.decode(errors="replace")
   return i
 
-def makeThumbnail(filename:str):
-  pass
-
-main()
-
-exit
-  
 def convert_to_degrees(value):
   d = float(value[0])
   m = float(value[1])
@@ -206,7 +201,6 @@ def get_gps_info(exif_data):
     for key, val in exif_data["GPSInfo"].items():
       decoded = GPSTAGS.get(key, key)
       gps_info[decoded] = val
-
   if "GPSLatitude" in gps_info and "GPSLatitudeRef" in gps_info and "GPSLongitude" in gps_info and "GPSLongitudeRef" in gps_info:
     lat = convert_to_degrees(gps_info["GPSLatitude"])
     if gps_info["GPSLatitudeRef"] != "N":
@@ -217,3 +211,9 @@ def get_gps_info(exif_data):
     gps_info["latitude"] = lat
     gps_info["longitude"] = lon
   return gps_info
+
+def makeThumbnail(filename:str):
+  pass
+
+main()
+exit
