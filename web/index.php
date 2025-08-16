@@ -2,16 +2,12 @@
 /* housekeeping */
 
 /* Does our symlink for where the thumbnails are stored exist? */
-if (!file_exists('archive-thumbnails')) { die('archive-thumbnails do not exist. create a symlink here to where they are so we can make prettiness show up'); }
+if (!file_exists('../config.json')) { die('config.json does not exist. sad'); }
+$config = json_decode(file_get_contents('../config.json'), true);
+if (!file_exists($config['thumbnail_folder'])) { die($config['thumbnail_folder'] . ' do not exist. create a symlink here to where they are so we can make prettiness show up'); }
 
 /* Our database connection information */
-$MYSQL = [
-    'hostname' => 'localhost',
-    'username' => 'digital_archive',
-    'password' => 'digital_archive',
-    'database' => 'digital_archive',
-];
-$link = mysqli_connect($MYSQL['hostname'], $MYSQL['username'], $MYSQL['password'], $MYSQL['database']);
+$link = mysqli_connect($config['database']['hostname'], $config['database']['username'], $config['database']['password'], $config['database']['database']);
 if (!$link) { die('cannot connect to database. reconfigure, then try again.'); }
 
 /**
@@ -51,7 +47,7 @@ if (strtolower($action) == 'edit') {
         <style>
         </style>
         <script>
-var thumbnail_width = 160;
+var thumbnail_width = <?php echo $config['thumbnail_width']; ?>;
 var current_page = 1;
 window.addEventListener('load', (e) => {
     loadPage(current_page);

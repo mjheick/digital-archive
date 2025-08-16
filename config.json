@@ -1,0 +1,17 @@
+{
+    "database": {
+        "hostname": "localhost",
+        "username": "digital_archive",
+        "password": "digital_archive",
+        "database": "digital_archive"
+    },
+    "ffprobe_exec": "/bin/ffprobe",
+    "ffmpeg_exec": "/bin/ffmpeg",
+    "thumbnail_basefolder": "/mnt/",
+    "thumbnail_folder": "archive-thumbnails",
+    "thumbnail_dimensions": [
+        400,
+        400
+    ],
+    "thumbnail_width": 160
+}

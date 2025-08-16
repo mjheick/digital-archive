@@ -8,14 +8,6 @@ import sys
 from PIL import Image, TiffImagePlugin # pip install pillow
 from PIL.ExifTags import TAGS, GPSTAGS
 
-# Constants
-THUMBNAIL_BASEFOLDER = '/mnt/archive-thumbnails'
-THUMBNAIL_DIMENSIONS = (400, 400)
-FFPROBE_EXEC = '/bin/ffprobe'
-FFMPEG_EXEC = '/bin/ffmpeg'
-IMAGE_GPSDATA = 34853  # GPSInfo
-IMAGE_EXIFDATA = 34665  # ExifOffset
-
 # Acceptable mime-types for scanner based on file extension
 # https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types/Common_types
 MIME_TYPES = {
@@ -25,16 +17,29 @@ MIME_TYPES = {
   'gif': 'image/gif',
   'mpg': 'video/mpeg',
   'mpeg': 'video/mpeg',
-  #'mp3': 'audio/mpeg',
   'mp4': 'video/mp4',
   'avi': 'video/x-msvideo',
 }
 
+# Load config
+if not os.path.isfile("config.json"):
+    print("configuration does not exist")
+    sys.exit(1)
+with open('config.json') as file:
+  config = json.load(file)
+
+# Constants
+THUMBNAIL_BASEFOLDER = os.path.join(config["thumbnail_basefolder"], config["thumbnail_folder"])
+THUMBNAIL_DIMENSIONS = (config["thumbnail_dimensions"][0], config["thumbnail_dimensions"][1])
+FFPROBE_EXEC = config["ffprobe_exec"]
+FFMPEG_EXEC = config["ffmpeg_exec"]
+IMAGE_GPSDATA = 34853  # GPSInfo
+IMAGE_EXIFDATA = 34665  # ExifOffset
 SQL = {
-  'host': 'localhost',
-  'username': 'digital_archive',
-  'password': 'digital_archive',
-  'database': 'digital_archive'
+  'host': config['database']['hostname'],
+  'user': config['database']['username'],
+  'password': config['database']['password'],
+  'database': config['database']['database'],
 }
 
 def main():
@@ -57,7 +62,12 @@ def main():
     return 0
   
   # connect with database
-  db = mysql.connector.connect(host=SQL["host"], user=SQL["username"], password=SQL["password"], database=SQL["database"])
+  try:
+    db = mysql.connector.connect(**SQL)
+  except mysql.connector.errors.DatabaseError:
+    print("There was an error connecting with the database. Check config")
+    return 1
+    
   cursor = db.cursor()
   
   # Recursively scan for all directories and files
