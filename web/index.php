@@ -20,10 +20,19 @@ if (!$link) { die('cannot connect to database. reconfigure, then try again.'); }
  * action = edit > Viewing/editing data
  * All these will be json responses. Badness is in {'error' => ''}
  */
-$action = $_POST['action'] ?? 'unknown';
-if ($action == 'unknown') { die(json_encode(['error' => 'bad parameter passed in for action'])); }
+$action = $_POST['action'] ?? null;
 if (strtolower($action) == 'nav') {
     /* Navigating */
+    $page = $_POST['page'] ?? "1";
+    $entries = $_POST['entries'] ?? "60";
+    $data = [];
+    if ($page == "0") { die(json_encode(["error" => "bad page 0"])); }
+    $query = "SELECT `pk`, `hash` FROM `entries` ORDER BY `pk` ASC LIMIT " . (($page - 1) * $entries) . "," . $entries;
+    $res = mysqli_query($link, $query);
+    while ($r = mysqli_fetch_assoc($res)) {
+        $data[] = $r['pk'] . ':' . $r['hash'];
+    }
+    echo json_encode(['data' => $data]);
     die();
 }
 if (strtolower($action) == 'edit') {
@@ -39,24 +48,82 @@ if (strtolower($action) == 'edit') {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link href="bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+        <style>
+        </style>
         <script>
 var page = 1;
+var thumbnail_width = 160;
 window.addEventListener('load', (e) => {
     loadPage(page);
 });
 function loadPage(page) {
-
+  let xhr = new XMLHttpRequest();
+  xhr.onreadystatechange = () => {
+    if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+      let res = xhr.responseText;
+      let j = JSON.parse(res);
+      let page = document.getElementById('page');
+      if ("data" in j) {
+        page.innerHTML = '';
+        page_data = ''
+        items = j.data;
+        row_length = 6;
+        for (let i = 0; i < items.length; i++) {
+            item = j.data[i];
+            entries = item.split(':');
+            primary_key = entries[0];
+            hash = entries[1];
+            thumbnail = hash.substr(0, 7);
+            if (row_length == 6) {
+                page_data = page_data + '<div class="row">';
+            }
+            page_data = page_data + '<div class="col">' + '<img src="archive-thumbnails/' + thumbnail + '.jpg" width="' + thumbnail_width + '" /></div>';
+            row_length--;
+            if (row_length == 0) {
+                page_data = page_data + '</div>';
+                row_length = 6;
+            }
+        }
+        page.innerHTML = page_data;
+      }
+    }
+  };
+  xhr.open('POST', 'index.php', true);
+  xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+  xhr.send('action=nav&page=' + page);
 }
         </script>
     </head>
     <body>
         <div class="container">
-            <div id="page_top"></div>
-            <div id="page_search"></div>
-            <div id="page_navigation_top"></div>
+            <!-- header -->
+            <div class="row">
+                <div class="col text-center">
+                    <h1>digital-archive</h1>
+                </div>
+            </div>
+            <!-- search -->
+            <div class="row">
+                <div class="col text-center">
+                    <input type="text" value="" placeholder="" />
+                </div>
+            </div>
+            <!-- navigation -->
+            <div class="row">
+                <div class="col text-center">
+                    Pages: 
+                </div>
+            </div>
+            <!-- page -->
+            <div class="row"><div class="col"><hr /></div></div>
             <div id="page"></div>
-            <div id="page_navigation_bottom"></div>
-            <div id="page_bottom"></div>
+            <div class="row"><div class="col"><hr /></div></div>
+            <!-- footer -->
+            <div class="row">
+                <div class="col text-center">
+                    <small>&copy;2025 Aug 16 | Matthew James Heick</small>
+                </div>
+            </div>
         </div>
         <script src="bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
     </body>
