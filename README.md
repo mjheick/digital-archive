@@ -9,8 +9,9 @@ file-scanner.py:
 
 web-indexer.py:
 - This will run every-so-often to do minor table updates based on entries in the database
+- This will also do the prelimiary metadata -> values ingestion that the scanner gathers.
 
-index.php:
+web/index.php:
 - This is the interactive web front-end, styled with bootstrap
 
 # Storage

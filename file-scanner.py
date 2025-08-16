@@ -233,10 +233,13 @@ def makeThumbnail(filename:str, hash:str):
       if tn_height < image_height:
         ratio = image_width / image_height
         tn_width = int(tn_height * ratio)
+      if tn_width == 0 or tn_height == 0:
+        tn_width = THUMBNAIL_DIMENSIONS[0]
+        tn_height = THUMBNAIL_DIMENSIONS[1]
       # tn_* dimensions are now set
       tn_image = image.resize((tn_width, tn_height))
       tn_image.save(output_filename, "JPEG")
-    except (Image.UnidentifiedImageError, OSError):
+    except (Image.UnidentifiedImageError, OSError, SyntaxError):
       pass
   elif mime.find("video/") != -1:
     tmp_filename = os.path.join(THUMBNAIL_BASEFOLDER, hash + ".jpg")
@@ -252,11 +255,14 @@ def makeThumbnail(filename:str, hash:str):
       if tn_height < image_height:
         ratio = image_width / image_height
         tn_width = int(tn_height * ratio)
+      if tn_width == 0 or tn_height == 0:
+        tn_width = THUMBNAIL_DIMENSIONS[0]
+        tn_height = THUMBNAIL_DIMENSIONS[1]
       # tn_* dimensions are now set
       tn_image = image.resize((tn_width, tn_height))
       tn_image.save(output_filename, "JPEG")
       os.remove(tmp_filename)
-    except (Image.UnidentifiedImageError, OSError):
+    except (Image.UnidentifiedImageError, OSError, SyntaxError):
       pass
   else:
     pass
