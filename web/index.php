@@ -51,20 +51,32 @@ if (strtolower($action) == 'edit') {
         <style>
         </style>
         <script>
-var page = 1;
 var thumbnail_width = 160;
+var current_page = 1;
 window.addEventListener('load', (e) => {
-    loadPage(page);
+    loadPage(current_page);
+    document.onkeydown = function (e) {
+        e = e || window.event;
+        if (e.keyCode == 37) { // left arrow key
+            if (current_page > 1) {
+                loadPage(current_page - 1);
+            }
+        }
+        if (e.keyCode == 39) { // right arrow key
+            loadPage(current_page + 1);
+        }
+    };
 });
 function loadPage(page) {
+  current_page = page;
   let xhr = new XMLHttpRequest();
   xhr.onreadystatechange = () => {
     if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
       let res = xhr.responseText;
       let j = JSON.parse(res);
-      let page = document.getElementById('page');
+      let pagediv = document.getElementById('page'); pagediv.innerHTML = '';
+      let navdiv = document.getElementById('nav'); navdiv.innerHTML = '';
       if ("data" in j) {
-        page.innerHTML = '';
         page_data = ''
         items = j.data;
         row_length = 6;
@@ -84,7 +96,16 @@ function loadPage(page) {
                 row_length = 6;
             }
         }
-        page.innerHTML = page_data;
+        pagediv.innerHTML = page_data;
+        /* Navigation */
+        let nav_data = '';
+        if (page > 1) {
+            nav_data = '<a href="javascript:loadPage(' + (page - 1) + ');">&lt; Previous</a> | ';
+        } else {
+            nav_data = '&lt; Previous | ';
+        }
+        nav_data = nav_data + 'Page ' + page + ' | <a href="javascript:loadPage(' + (page + 1) + ');">Next &gt;</a>'
+        nav.innerHTML = nav_data;
       }
     }
   };
@@ -110,9 +131,7 @@ function loadPage(page) {
             </div>
             <!-- navigation -->
             <div class="row">
-                <div class="col text-center">
-                    Pages: 
-                </div>
+                <div id="nav" class="col text-center"></div>
             </div>
             <!-- page -->
             <div class="row"><div class="col"><hr /></div></div>
